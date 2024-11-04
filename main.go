@@ -3,8 +3,8 @@ package main
 import (
 	"Anastasia/worker-pool/pool"
 	"fmt"
-	"runtime"
 	"sync"
+	"time"
 )
 
 func main() {
@@ -13,10 +13,12 @@ func main() {
 	wp := pool.NewWorkerPool()
 	// Запуск воркеров в отдельных потоках.
 	// Асинхронно.
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < 6; i++ {
 		go wp.AddWorker(&wg)
 	}
 
+	time.Sleep(time.Second)
+	wp.DeleteWorker()
 	wp.DeleteWorker()
 	wp.DeleteWorker()
 
@@ -29,7 +31,11 @@ func main() {
 	}(wp.Res)
 	// Отправка заданий в поток.
 	// Синхронно.
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10; i++ {
+		wp.AddJob(fmt.Sprintf("Job №%d", i))
+	}
+
+	for i := 0; i < 100; i++ {
 		wp.AddJob(fmt.Sprintf("Job №%d", i))
 	}
 	close(wp.Jobs)

@@ -8,7 +8,6 @@ import (
 type Worker struct {
 	id   int
 	stop chan struct{}
-	done chan struct{}
 }
 
 // Создает новый экземпляр воркера
@@ -17,7 +16,6 @@ func NewWorker(id int) *Worker {
 	return &Worker{
 		id:   id,
 		stop: make(chan struct{}),
-		done: make(chan struct{}),
 	}
 }
 
@@ -58,8 +56,8 @@ func (wp *WorkerPool) DeleteWorker() {
 
 	if len(wp.workers) > 1 {
 		worker := wp.workers[len(wp.workers)-1]
+		worker.stop <- struct{}{}
 		close(worker.stop)
-		<-worker.done
 		wp.workers = wp.workers[:len(wp.workers)-1]
 	}
 }
@@ -73,17 +71,17 @@ func (wp *WorkerPool) AddJob(job string) {
 // Рабочий поток.
 func (wp *WorkerPool) startWorker(worker *Worker, wg *sync.WaitGroup) {
 	defer wg.Done()
-	defer close(worker.done)
 
 	for {
 		select {
+		case <-worker.stop:
+			return
+
 		case job, ok := <-wp.Jobs:
 			if !ok {
 				return
 			}
 			wp.Res <- fmt.Sprintf("Процесс №%d: %s", worker.id, job)
-		case <-worker.stop:
-			return
 		}
 	}
 }
